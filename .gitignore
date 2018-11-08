@@ -28,3 +28,8 @@ nbdist/
 .DS_Store
 .vscode
 
+customer/dotnet/bin/
+customer/dotnet/obj/
+preference/dotnet/bin/
+preference/dotnet/obj/
+
