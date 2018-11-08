@@ -25,7 +25,7 @@ namespace dotnet.Controllers
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", ".NET Customer App");
 
-            var msg = client.GetStringAsync(url);
+            var msg = client.GetStringAsync(url).Result;
 
             string hostname = Dns.GetHostName();
             return String.Format(responseStringFormat, hostname, msg);
