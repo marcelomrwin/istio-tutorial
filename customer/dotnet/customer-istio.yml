@@ -1,0 +1,245 @@
+apiVersion: v1
+items:
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: customer
+    name: customer
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ""
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: customer
+    name: customer
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: customer:latest
+    postCommit: {}
+    resources: {}
+    source:
+      contextDir: customer/dotnet
+      git:
+        uri: https://github.com/marcelomrwin/istio-tutorial
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: dotnet:2.0
+          namespace: openshift
+      type: Source
+    triggers:
+    - github:
+        secret: kdqENyi9V76yXLIxlcZc
+      type: GitHub
+    - generic:
+        secret: Wgc9K2nZD3T-UaoChPov
+      type: Generic
+    - type: ConfigChange
+    - imageChange: {}
+      type: ImageChange
+  status:
+    lastVersion: 0
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: customer
+    name: customer
+  spec:
+    replicas: 1
+    selector:
+      app: customer
+      deploymentconfig: customer
+    strategy:
+      resources: {}
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+          sidecar.istio.io/status: '{"version":"48f39c4792663fa70ea9c6eb9c29612031cbe36a3850b41faa407da434ec11d3","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        creationTimestamp: null
+        labels:
+          app: customer
+          deploymentconfig: customer
+      spec:
+        containers:
+        - env:
+          - name: JAEGER_ENDPOINT
+            value: http://jaeger-collector.istio-system.svc:14268/api/traces
+          - name: JAEGER_PROPAGATION
+            value: b3
+          - name: JAEGER_SAMPLER_PARAM
+            value: "1"
+          - name: JAEGER_SAMPLER_TYPE
+            value: const
+          - name: JAEGER_SERVICE_NAME
+            value: customer
+          image: customer:latest
+          name: customer
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+        - args:
+          - proxy
+          - sidecar
+          - --configPath
+          - /etc/istio/proxy
+          - --binaryPath
+          - /usr/local/bin/envoy
+          - --serviceCluster
+          - customer
+          - --drainDuration
+          - 45s
+          - --parentShutdownDuration
+          - 1m0s
+          - --discoveryAddress
+          - istio-pilot.istio-system:15007
+          - --discoveryRefreshDelay
+          - 1s
+          - --zipkinAddress
+          - zipkin.istio-system:9411
+          - --connectTimeout
+          - 10s
+          - --proxyAdminPort
+          - "15000"
+          - --controlPlaneAuthPolicy
+          - NONE
+          env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: INSTANCE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: ISTIO_META_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: ISTIO_META_INTERCEPTION_MODE
+            value: REDIRECT
+          - name: ISTIO_METAJSON_ANNOTATIONS
+            value: |
+              {"openshift.io/generated-by":"OpenShiftNewApp"}
+          - name: ISTIO_META_app
+            value: customer
+          - name: ISTIO_META_deploymentconfig
+            value: customer
+          image: docker.io/istio/proxyv2:1.0.3
+          imagePullPolicy: IfNotPresent
+          name: istio-proxy
+          ports:
+          - containerPort: 15090
+            name: http-envoy-prom
+            protocol: TCP
+          resources:
+            requests:
+              cpu: 10m
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsUser: 1337
+          volumeMounts:
+          - mountPath: /etc/istio/proxy
+            name: istio-envoy
+          - mountPath: /etc/certs/
+            name: istio-certs
+            readOnly: true
+        initContainers:
+        - args:
+          - -p
+          - "15001"
+          - -u
+          - "1337"
+          - -m
+          - REDIRECT
+          - -i
+          - '*'
+          - -x
+          - ""
+          - -b
+          - "8080"
+          - -d
+          - ""
+          image: docker.io/istio/proxy_init:1.0.3
+          imagePullPolicy: IfNotPresent
+          name: istio-init
+          resources: {}
+          securityContext:
+            capabilities:
+              add:
+              - NET_ADMIN
+            privileged: true
+        volumes:
+        - emptyDir:
+            medium: Memory
+          name: istio-envoy
+        - name: istio-certs
+          secret:
+            optional: true
+            secretName: istio.default
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - customer
+        from:
+          kind: ImageStreamTag
+          name: customer:latest
+      type: ImageChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: customer
+    name: customer
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: customer
+      deploymentconfig: customer
+  status:
+    loadBalancer: {}
+kind: List
+metadata: {}
+---
