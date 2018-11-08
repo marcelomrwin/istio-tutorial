@@ -13,7 +13,7 @@ namespace dotnet.Controllers
     public class ValuesController : Controller
     {
         const string url = "http://preference:8080";
-        const string responseStringFormat = "customer => {0}\n";
+        const string responseStringFormat = "customer from {0} => {1}\n";
 
         private static readonly HttpClient client = new HttpClient();
 
@@ -25,11 +25,10 @@ namespace dotnet.Controllers
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", ".NET Customer App");
 
-            var ret = client.GetStringAsync(url);
-            var msg = await ret;
+            var msg = client.GetStringAsync(url);
 
             string hostname = Dns.GetHostName();
-            return String.Format(responseStringFormat, msg);
+            return String.Format(responseStringFormat, hostname, msg);
         }
     }
 }
